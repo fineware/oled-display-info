@@ -1,0 +1,135 @@
+#######################################
+# File di esempio per il device oled-display-info
+#######################################
+
+
+substitutions:
+  sensore_temperatura_interna: sensor.dati_temperature
+
+#######################################
+
+esphome:
+  name: oled-display-info
+  platform: ESP8266
+  board: d1_mini
+
+#######################################
+
+wifi:
+  # sostituire i valori di ssid e password per collegarsi al proprio wifi
+  # oppure accedere al device in modalità "AP" con le credenziali sotto indicate
+  ssid: 'wifiap'
+  password: 'secretPass'
+
+#######################################
+# rete Wifi attivata dal device per configurare l'accesso al wifi domestico
+# dopo 30 secondi dall'accensione connettersi con un pc o smartphone con la rete "display-info"
+# ed aprire la pagina http://192.168.4.1 
+  ap:
+    ssid: "display-info"
+    password: "12345678"
+    ap_timeout : 15s
+
+#######################################
+
+captive_portal:
+
+#######################################
+
+logger:
+
+#######################################
+
+api:
+
+#######################################
+
+ota:
+web_server:
+  port: 80
+
+#######################################
+
+font:
+  - file: 'BebasNeue-Regular.ttf'
+    id: font6
+    size: 45
+#######################################
+
+sensor:
+
+  - platform: homeassistant
+    id: temperatura_interna
+    entity_id: $sensore_temperatura_interna
+    internal: true
+
+#######################################
+
+number:
+  - platform: template
+    name: Switch LCD
+    id: switch_lcd
+    unit_of_measurement: '%'
+    optimistic: true
+    min_value: 0
+    max_value: 1
+    step: 1
+    initial_value: 1
+    on_value:
+      then:
+        lambda: |-
+          id(oled_display).set_brightness(x / 1.0);
+          id(oled_display).setup();
+
+#######################################
+
+time:
+  - platform: homeassistant
+    id: esptime
+
+#######################################
+
+i2c:
+  sda: D1
+  scl: D2
+  scan: false
+
+#######################################
+
+interval:
+  - interval: 5s
+    then:
+      - display.page.show_next: oled_display
+      - component.update: oled_display
+
+#######################################
+
+display:
+
+  - platform: ssd1306_i2c
+    id: oled_display
+    model: "SSD1306 128x64"
+    reset_pin: D0
+    update_interval: 3s
+    address: 0x3C
+    rotation: 180°
+    pages:
+      - id: page1
+        lambda: |-
+         // Message
+          if (id(switch_lcd).state > 0 ){
+          it.print(it.get_width()/2, it.get_height()/2, id(font6), TextAlign::CENTER, "ESPHome");
+          }
+      - id: page2
+        lambda: |-
+          // temperatura_interna
+          if (id(switch_lcd).state > 0 ){
+          it.strftime(20, 0, id(font6), TextAlign::TOP_LEFT, "%H:%M", id(esptime).now());
+          } 
+      - id: page3
+        lambda: |-
+          // ORARIO
+          if (id(switch_lcd).state > 0 ){
+          it.strftime(20, 0, id(font6), TextAlign::TOP_LEFT, "%H:%M", id(esptime).now());
+          }
+         
